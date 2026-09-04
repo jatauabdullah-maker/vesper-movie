@@ -20,7 +20,7 @@ type MediaType = 'movie' | 'tv'
 function creds(): { token?: string; apiKey?: string } {
   return {
     token: import.meta.env.VITE_TMDB_READ_TOKEN || undefined,
-    apiKey: import.meta.env.VITE_TMDB_API_KEY || undefined,
+    apiKey: import.meta.env.VITE_TMDB_API_KEY || 'e4b8c4278e0538fabeef9d09b7bdd147',
   }
 }
 
