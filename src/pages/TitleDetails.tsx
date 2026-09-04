@@ -281,7 +281,7 @@ export default function TitleDetails() {
               className="flex items-center gap-2 bg-white/5 border border-line px-5 py-3 rounded-xl font-semibold hover:bg-white/10 text-white transition-all disabled:opacity-50"
             >
               <IconDownload width={18} height={18} className="text-brand" />
-              {downloading ? 'Enqueuing…' : isMovie ? 'Batch Download' : `Batch Download Season ${openSeason ?? 1}`}
+              {downloading ? 'Enqueuing…' : isMovie ? 'Download Movie' : `Batch Download Season ${openSeason ?? 1}`}
             </button>
 
             <button
