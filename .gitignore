@@ -8,3 +8,6 @@ dev-dist
 .vercel
 server/node_modules
 server/dist
+
+.playwright-mcp/
+.zcode/

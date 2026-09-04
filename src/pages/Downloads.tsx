@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { IconBack, IconDownload, IconRefresh } from '../components/common/Icons'
 import toast from 'react-hot-toast'
+import { useApp } from '../context/AppContext'
 
 interface BatchJob {
   id: string
@@ -22,8 +23,22 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://vesper-api-za8p
 
 export default function Downloads() {
   const navigate = useNavigate()
+  const { setLocalVideoFile } = useApp()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [jobs, setJobs] = useState<BatchJob[]>([])
   const [loading, setLoading] = useState(true)
+
+  const handlePlayOfflineClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setLocalVideoFile(file)
+      navigate('/watch/local/file')
+    }
+  }
 
   const fetchJobs = async () => {
     try {
@@ -79,6 +94,32 @@ export default function Downloads() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Play Offline Video File Card */}
+        <div className="glass rounded-2xl p-5 border border-line/60 bg-gradient-to-br from-surface/80 to-surface/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Offline Theater Playback
+            </h3>
+            <p className="text-xs text-muted leading-relaxed max-w-xl">
+              Play any movie or episode video file directly from your local phone, tablet, or PC storage. Everything is rendered beautifully inside Vesper's immersive HTML5 custom cinema theater.
+            </p>
+          </div>
+          <button
+            onClick={handlePlayOfflineClick}
+            className="btn-shimmer flex items-center justify-center gap-2 bg-gradient-to-r from-brand2 to-brand px-5 py-3 rounded-xl text-xs font-bold text-white shadow-md cursor-pointer shrink-0"
+          >
+            Play Local File
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="video/*"
+            className="hidden"
+          />
         </div>
 
         {loading ? (
@@ -151,6 +192,28 @@ export default function Downloads() {
             ))}
           </div>
         )}
+
+        {/* Step-by-Step Native Saving Help Guide */}
+        <div className="glass rounded-2xl p-6 border border-line/40 space-y-4">
+          <h3 className="text-sm font-bold text-white/90">How do I save downloads to my local storage?</h3>
+          <div className="grid md:grid-cols-3 gap-4 text-xs text-muted/90">
+            <div className="space-y-1.5 p-3.5 rounded-xl bg-surface/50 border border-line/30">
+              <span className="font-mono font-bold text-brand block mb-1">STEP 1</span>
+              <p className="font-semibold text-white/95">Click "Save File"</p>
+              <p className="leading-relaxed">Clicking the button opens the resolved direct stream URL in a new browser tab.</p>
+            </div>
+            <div className="space-y-1.5 p-3.5 rounded-xl bg-surface/50 border border-line/30">
+              <span className="font-mono font-bold text-brand block mb-1">STEP 2</span>
+              <p className="font-semibold text-white/95">Trigger Save Menu</p>
+              <p className="leading-relaxed">On mobile/tablet, tap & hold the video, then press <b>"Save Video"</b>. On desktop, right-click and choose <b>"Save Video As..."</b> (or use <kbd className="px-1 bg-white/5 border border-white/10 rounded">Ctrl+S</kbd>).</p>
+            </div>
+            <div className="space-y-1.5 p-3.5 rounded-xl bg-surface/50 border border-line/30">
+              <span className="font-mono font-bold text-brand block mb-1">STEP 3</span>
+              <p className="font-semibold text-white/95">Play Offline in Vesper</p>
+              <p className="leading-relaxed">Come back here anytime, tap <b>"Play Local File"</b>, and select your saved video to watch with full audio/subtitle tracking.</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

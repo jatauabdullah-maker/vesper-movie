@@ -18,6 +18,8 @@ interface AppState {
   continueWatching: WatchProgress[]
   history: WatchProgress[]
   refreshProgress: () => void
+  localVideoFile: File | null
+  setLocalVideoFile: (file: File | null) => void
 }
 
 const Ctx = createContext<AppState | null>(null)
@@ -27,6 +29,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>(getWatchlist)
   const [continueWatching, setContinueWatching] = useState<WatchProgress[]>(getContinueWatching)
   const [history, setHistory] = useState<WatchProgress[]>(getHistory)
+  const [localVideoFile, setLocalVideoFile] = useState<File | null>(null)
 
   const updateSettings = useCallback((s: Partial<Settings>) => {
     setSettings((prev) => {
@@ -59,8 +62,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       continueWatching,
       history,
       refreshProgress,
+      localVideoFile,
+      setLocalVideoFile,
     }),
-    [settings, updateSettings, watchlist, toggleWatchlist, isInWatchlist, continueWatching, history, refreshProgress]
+    [settings, updateSettings, watchlist, toggleWatchlist, isInWatchlist, continueWatching, history, refreshProgress, localVideoFile]
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

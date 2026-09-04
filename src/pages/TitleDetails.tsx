@@ -24,6 +24,7 @@ export default function TitleDetails() {
   const [error, setError] = useState<string | null>(null)
   const [openSeason, setOpenSeason] = useState<number | null>(1)
   const [downloading, setDownloading] = useState(false)
+  const [downloadingEpId, setDownloadingEpId] = useState<string | null>(null)
   const { isInWatchlist, toggleWatchlist } = useApp()
 
   useEffect(() => {
@@ -107,6 +108,43 @@ export default function TitleDetails() {
       toast.error('Download server is offline or restarting. Please try again in a few seconds.')
     } finally {
       setDownloading(false)
+    }
+  }
+
+  const handleDownloadEpisode = async (ep: Details['episodes'][0]) => {
+    if (!title || downloadingEpId) return
+    setDownloadingEpId(ep.id)
+    const jobTitle = `${title.title} - S${ep.season}E${ep.number}`
+    const downloadItems = [
+      {
+        episodeId: ep.id,
+        title: `S${ep.season}E${ep.number} - ${ep.title || 'Untitled'}`,
+        season: ep.season,
+        episode: ep.number,
+        type: 'tv' as const,
+      },
+    ]
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/downloads/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: jobTitle,
+          items: downloadItems,
+        }),
+      })
+
+      if (res.ok) {
+        toast.success(`Enqueued Episode ${ep.number}!`, { id: `ep-${ep.id}-success` })
+        navigate('/downloads')
+      } else {
+        toast.error('Failed to create download job.')
+      }
+    } catch {
+      toast.error('Download server is offline or restarting. Please try again.')
+    } finally {
+      setDownloadingEpId(null)
     }
   }
 
@@ -316,12 +354,22 @@ export default function TitleDetails() {
                                   </div>
                                 )}
                               </div>
-                              <Link
-                                to={`/watch/${title.id}/${ep.id}`}
-                                className="shrink-0 glass rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-white/15"
-                              >
-                                Play
-                              </Link>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  onClick={() => handleDownloadEpisode(ep)}
+                                  disabled={downloadingEpId === ep.id}
+                                  className="glass rounded-lg p-2 text-brand hover:bg-white/15 disabled:opacity-50"
+                                  title="Download Episode"
+                                >
+                                  <IconDownload width={14} height={14} />
+                                </button>
+                                <Link
+                                  to={`/watch/${title.id}/${ep.id}`}
+                                  className="glass rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-white/15"
+                                >
+                                  Play
+                                </Link>
+                              </div>
                             </li>
                           )
                         })}
