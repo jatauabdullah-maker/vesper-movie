@@ -1,0 +1,252 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0e0c09;
+  --color-surface: #17130d;
+  --color-surface2: #211a12;
+  --color-brand: #f2b13d;
+  --color-brand2: #e07b2f;
+  --color-accent: #e2483d;
+  --color-muted: #a89e8c;
+  --color-line: rgba(255, 255, 255, 0.08);
+
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Outfit', 'Inter', system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-bg text-white font-display antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* Outfit reads like a cinema marquee — headings + the wordmark only. */
+h1, h2, h3, .font-heading {
+  font-family: var(--font-heading);
+  letter-spacing: -0.015em;
+}
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(242, 177, 61, 0.18);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(242, 177, 61, 0.32); }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Vesper glow background — a projector warming up in a dark room ── */
+.cinema-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  contain: paint;
+}
+.cinema-bg .glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.35;
+  will-change: transform;
+}
+.cinema-bg .glow-1 {
+  width: 520px; height: 520px;
+  background: radial-gradient(circle, #f2b13d 0%, transparent 70%);
+  top: -12%; left: -6%;
+  animation: drift1 28s ease-in-out infinite alternate;
+}
+.cinema-bg .glow-2 {
+  width: 460px; height: 460px;
+  background: radial-gradient(circle, #e2483d 0%, transparent 70%);
+  top: -4%; right: -8%;
+  animation: drift2 34s ease-in-out infinite alternate;
+}
+.cinema-bg .glow-3 {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, #7a3b1e 0%, transparent 70%);
+  bottom: -16%; left: 38%;
+  animation: drift3 40s ease-in-out infinite alternate;
+}
+
+@keyframes drift1 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(60px, 50px) scale(1.1); }
+}
+@keyframes drift2 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-70px, 60px) scale(1.05); }
+}
+@keyframes drift3 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(40px, -60px) scale(1.08); }
+}
+
+/* ── Projector beams — thin light shafts sweeping the dark ── */
+.light-beams {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.light-beams .beam {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(242,177,61,0.55) 45%, rgba(226,72,61,0.55) 55%, transparent);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.light-beams .beam-1 { width: 28%; top: 22%; animation: sweep 18s ease-in-out infinite; animation-delay: 0s; }
+.light-beams .beam-2 { width: 22%; top: 45%; animation: sweep 21s ease-in-out infinite; animation-delay: 3s; }
+.light-beams .beam-3 { width: 35%; top: 62%; animation: sweep 16s ease-in-out infinite; animation-delay: 7s; }
+.light-beams .beam-4 { width: 18%; top: 78%; animation: sweep 23s ease-in-out infinite; animation-delay: 2s; }
+.light-beams .beam-5 { width: 32%; top: 90%; animation: sweep 19s ease-in-out infinite; animation-delay: 11s; }
+
+@keyframes sweep {
+  0% { transform: translateX(-200px) scaleX(0.4); opacity: 0; }
+  15% { opacity: 0.65; }
+  85% { opacity: 0.45; }
+  100% { transform: translateX(1400px) scaleX(1.4); opacity: 0; }
+}
+
+@media (max-width: 640px) {
+  .cinema-bg .glow { opacity: 0.25; filter: blur(70px); }
+  .cinema-bg .glow-1 { width: 320px; height: 320px; }
+  .cinema-bg .glow-2 { width: 300px; height: 300px; }
+  .cinema-bg .glow-3 { width: 280px; height: 280px; }
+  .light-beams { display: none; }
+}
+
+/* ── Glass effect ── */
+.glass {
+  background: linear-gradient(170deg, rgba(255,255,255,0.03), rgba(255,255,255,0) 40%), rgba(23, 19, 13, 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 44px rgba(0,0,0,0.25);
+}
+
+/* ── Card with hover glow and left accent bar ── */
+.card-ring {
+  position: relative;
+  transition: transform 0.3s cubic-bezier(.22, 1, .36, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+  border: 1px solid transparent;
+}
+.card-ring::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 14px 0 0 14px;
+  background: linear-gradient(180deg, #f2b13d, #e2483d);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.card-ring:hover {
+  transform: translateY(-4px);
+  border-color: rgba(242, 177, 61, 0.3);
+  box-shadow: 0 12px 40px -8px rgba(242, 177, 61, 0.3);
+}
+.card-ring:hover::before {
+  opacity: 1;
+}
+
+/* ── Shimmer button effect ── */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -80%;
+  width: 50%; height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,0.16), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.5s cubic-bezier(.22, 1, .36, 1);
+}
+.btn-shimmer:hover::after {
+  left: 130%;
+}
+
+/* ── Text gradient ── */
+.text-gradient {
+  background: linear-gradient(120deg, #ffd27a, #f2b13d 55%, #e07b2f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── Hero fade ── */
+.hero-fade {
+  background: linear-gradient(to top, #0e0c09 4%, rgba(14, 12, 9, 0.6) 45%, rgba(14, 12, 9, 0.15) 100%);
+}
+
+/* ── Screen entrance animation ── */
+@keyframes rise {
+  0% { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-rise {
+  animation: rise 0.45s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+/* ── Custom select dark mode ── */
+select {
+  color-scheme: dark;
+}
+
+/* ── Skeleton loader ── */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #1a150e 25%, #241d13 50%, #1a150e 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+/* ── Plyr dark theme overrides ── */
+.plyr {
+  --plyr-color-main: #f2b13d;
+  --plyr-video-background: #000;
+  --plyr-menu-background: rgba(23, 19, 13, 0.95);
+  --plyr-menu-color: #fff;
+  --plyr-control-icon-size: 16px;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+}
+
+.plyr--video,
+.plyr--video .plyr__video-wrapper {
+  height: 100%;
+  width: 100%;
+}
+.plyr--video video {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+.plyr__control--overlaid {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,5 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - paragraph [ref=e8]: Fetching Data, Please wait....
+    - img "loader" [ref=e9]
+  - alert [ref=e10]

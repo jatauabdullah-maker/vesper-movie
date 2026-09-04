@@ -1,0 +1,39 @@
+[     816ms] [ERROR] TypeError: Cannot set properties of null (setting 'ondblclick')
+    at https://offer.alibaba.com/cps/oft79dio?bm=cps&src=saf&tp1=1788457940100000NG665b5d7bcb158c6dI:1082:25 @ https://offer.alibaba.com/cps/oft79dio?bm=cps&src=saf&tp1=1788457940100000NG665b5d7bcb158c6dI:1090
+[    1053ms] [WARNING] 打点参数 xman_i 的值不是 string 或者 number类型，已被自动过滤 undefined @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25producthome.js:0
+[    1068ms] [WARNING] 打点参数 isTestMode 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    1069ms] [WARNING] 打点参数 isMulti 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    1069ms] [WARNING] 打点参数 isSuppliersFileSearch 的值不是 string 或者 number类型，已被自动过滤 false @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    1069ms] [WARNING] 打点参数 isProductsFileSearch 的值不是 string 或者 number类型，已被自动过滤 false @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    1069ms] [WARNING] 打点参数 isMultiSearch3Tab 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    1069ms] [WARNING] 打点参数 openProBizVersion 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    1069ms] [WARNING] 打点参数 defaultProEnable 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    1069ms] [WARNING] 打点参数 isHideProButton 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    1069ms] [WARNING] 打点参数 sceneInfo 的值不是 string 或者 number类型，已被自动过滤 {name: home_login_first_screen, bizScene: pcHomeProducts} @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    1069ms] [WARNING] 打点参数 abTest 的值不是 string 或者 number类型，已被自动过滤 {fy26_business_research_pc_prosearch: test, fy26_business_research_suppliers: test, fy25_business_research: newpro, isSatisfiedCookie: false, fy26_pc_home_ai_color: test} @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    1069ms] [WARNING] 打点参数 isPro 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    1616ms] [ERROR] The script resource is behind a redirect, which is disallowed. @ :0
+[    2727ms] [LOG] Thu Sep 03 2026 19:43:35 GMT+0100 (West Africa Time) @ https://aeis.alicdn.com/AWSC/et/1.83.41/et_f.js:1
+[    5170ms] [ERROR] Access to fetch at 'https://accounts.alibaba.com/benefits/external/getDetailedBenefitsOverview?entry=globalHeader' from origin 'https://offer.alibaba.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://offer.alibaba.com/cps/oft79dio?bm=cps&src=saf&tp1=1788457940100000NG665b5d7bcb158c6dI:0
+[    5172ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://accounts.alibaba.com/benefits/external/getDetailedBenefitsOverview?entry=globalHeader:0
+[    5753ms] [WARNING] 打点参数 isTestMode 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    5753ms] [WARNING] 打点参数 isMulti 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    5754ms] [WARNING] 打点参数 isSuppliersFileSearch 的值不是 string 或者 number类型，已被自动过滤 false @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    5754ms] [WARNING] 打点参数 isProductsFileSearch 的值不是 string 或者 number类型，已被自动过滤 false @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    5754ms] [WARNING] 打点参数 isMultiSearch3Tab 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    5755ms] [WARNING] 打点参数 openProBizVersion 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    5755ms] [WARNING] 打点参数 defaultProEnable 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    5755ms] [WARNING] 打点参数 isHideProButton 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    5755ms] [WARNING] 打点参数 sceneInfo 的值不是 string 或者 number类型，已被自动过滤 {name: home_login_first_screen, bizScene: pcHomeProducts} @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    5755ms] [WARNING] 打点参数 abTest 的值不是 string 或者 number类型，已被自动过滤 {fy26_business_research_pc_prosearch: test, fy26_business_research_suppliers: test, fy25_business_research: newpro, isSatisfiedCookie: false, fy26_pc_home_ai_color: test} @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    5758ms] [WARNING] 打点参数 isPro 的值不是 string 或者 number类型，已被自动过滤 true @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:29
+[    5915ms] [WARNING] [GSI_LOGGER]: Your client application uses one of the Google One Tap prompt UI status methods that may stop functioning when FedCM becomes mandatory. Refer to the migration guide to update your code accordingly and opt-in to FedCM to test your changes. Learn more: https://developers.google.com/identity/gsi/web/guides/fedcm-migration?s=dc#display_moment and https://developers.google.com/identity/gsi/web/guides/fedcm-migration?s=dc#skipped_moment @ https://accounts.google.com/gsi/client:86
+[    5978ms] [ERROR] Not signed in with the identity provider. @ https://offer.alibaba.com/cps/oft79dio?bm=cps&src=saf&tp1=1788457940100000NG665b5d7bcb158c6dI:0
+[    6915ms] [WARNING] 打点参数 message 的值不是 string 或者 number类型，已被自动过滤 undefined @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:13
+[    7109ms] Uncaught (in promise) Error: JSONP request to //i.alibaba.com/ajax/user_portrait.htm?ctoken=undefined&_tb_token_=null&_=1788461016390 failed
+    at jsonpScript.onerror (https://s.alicdn.com/@g/code/npm/@alife/the-new-header/5.22.0/renderHeader.js:3119:15)
+[    7872ms] [WARNING] [Footer i18n] Missing translation — locale: "en-us", key: "sctnh.header_buyer_central_cocreate_pitch". Using English fallback (defaultI18n). @ https://s.alicdn.com/@g/code/npm/@alife/the-new-footer/2.18.0/index.js:0
+[    8520ms] [WARNING] 打点参数 message 的值不是 string 或者 number类型，已被自动过滤 undefined @ https://s.alicdn.com/@g/sc/pc-home-2022/0.0.385/js/fy25headersearchproduct.js:13
+[    9122ms] [WARNING] [itrace says] using cookieStore @ https://s.alicdn.com/@g/woodpeckerx/itrace-next/??itrace-jserror.iife.js,itrace-interface.iife.js,itrace-flow.iife.js,itrace-blank.iife.js,itrace-resource.iife.js,itrace.iife.js:5
+[   11490ms] [LOG] {"cfg":{},"tid":"NBr5Gu7Nb_vU9B8r99LGwg=="} @ https://o.alicdn.com/baxia/baxia-entry-gray/index.js:0
+[   12509ms] [ERROR] [GSI_LOGGER]: FedCM get() rejects with NetworkError: Error retrieving a token. @ https://accounts.google.com/gsi/client:87
