@@ -13,7 +13,7 @@ import {
 } from '../components/common/Icons'
 import type { TitleDetails as Details, TitleSummary } from '../types'
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://vesper-api.onrender.com'
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://vesper-api-za8p.onrender.com'
 
 export default function TitleDetails() {
   const { id } = useParams<{ id: string }>()

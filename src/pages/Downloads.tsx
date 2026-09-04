@@ -18,7 +18,7 @@ interface BatchJob {
   }[]
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://vesper-api.onrender.com'
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://vesper-api-za8p.onrender.com'
 
 export default function Downloads() {
   const navigate = useNavigate()
