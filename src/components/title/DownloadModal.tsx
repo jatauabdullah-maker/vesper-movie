@@ -141,7 +141,8 @@ export default function DownloadModal({ open, onClose, title, mode, seasonNumber
         items: localItems,
       })
       setBatchCount(items.length)
-      setPhase('started')
+      onClose()
+      navigate('/downloads')
       return
     }
 

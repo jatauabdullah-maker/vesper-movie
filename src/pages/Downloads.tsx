@@ -179,26 +179,16 @@ export default function Downloads() {
                   <p className="text-xs text-muted mt-0.5">
                     {new Date(job.createdAt).toLocaleTimeString()} · {job.items.length}{' '}
                     {job.items.length === 1 ? 'item' : 'items'}
+                    {job.status === 'processing' ? ` · ${job.progress}%` : ''}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      job.status === 'completed'
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-brand/10 text-brand border border-brand/30 animate-pulse'
-                    }`}
-                  >
-                    {job.status === 'completed' ? 'Ready' : `${job.progress}%`}
-                  </span>
-                  <button
-                    onClick={() => handleRemoveJob(job.id)}
-                    className="text-muted hover:text-rose-400 transition-colors p-1.5 rounded-lg hover:bg-rose-500/10"
-                    aria-label="Remove"
-                  >
-                    <IconTrash width={15} height={15} />
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleRemoveJob(job.id)}
+                  className="text-muted hover:text-rose-400 transition-colors p-1.5 rounded-lg hover:bg-rose-500/10 shrink-0"
+                  aria-label="Remove"
+                >
+                  <IconTrash width={15} height={15} />
+                </button>
               </div>
 
               {job.status === 'processing' && (
@@ -214,11 +204,6 @@ export default function Downloads() {
                 {job.items.map((item) => {
                   const best = bestQuality(item)
                   const chosen = item.quality && item.qualities?.[item.quality] ? item.quality : best
-                  const alts = item.qualities
-                    ? Object.keys(item.qualities)
-                        .filter((q) => q !== chosen)
-                        .sort((a, b) => qualityRank(b) - qualityRank(a))
-                    : []
                   const sizeMB = chosen && item.qualities?.[chosen]?.sizeMB
                   return (
                     <div
@@ -235,30 +220,17 @@ export default function Downloads() {
                           <span className="w-1.5 h-1.5 rounded-full bg-brand animate-ping" /> Finding sources…
                         </span>
                       ) : (
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {alts.map((q) => (
-                            <a
-                              key={q}
-                              href={fileUrl(item, q)}
-                              download
-                              onClick={() => toast.success(`Downloading ${q}p…`)}
-                              className="glass px-2.5 py-1.5 rounded-lg font-bold hover:bg-white/15 text-muted hover:text-white transition-colors"
-                            >
-                              {q}p · {item.qualities?.[q]?.sizeMB ?? '?'} MB
-                            </a>
-                          ))}
-                          {chosen && (
-                            <a
-                              href={fileUrl(item, chosen)}
-                              download
-                              onClick={() => toast.success(`Downloading ${chosen}p…`)}
-                              className="btn-shimmer flex items-center gap-1.5 bg-gradient-to-r from-brand2 to-brand px-3 py-1.5 rounded-lg font-bold text-white shadow-md"
-                            >
-                              <IconDownload width={13} height={13} /> Save {chosen}p
-                              {sizeMB ? ` · ${sizeMB >= 1000 ? `${(sizeMB / 1000).toFixed(1)} GB` : `${sizeMB} MB`}` : ''}
-                            </a>
-                          )}
-                        </div>
+                        chosen && (
+                          <a
+                            href={fileUrl(item, chosen)}
+                            download
+                            onClick={() => toast.success(`Downloading ${chosen}p…`)}
+                            className="btn-shimmer flex items-center gap-1.5 bg-gradient-to-r from-brand2 to-brand px-3 py-1.5 rounded-lg font-bold text-white shadow-md shrink-0"
+                          >
+                            <IconDownload width={13} height={13} /> Save{chosen ? ` ${chosen}p` : ''}
+                            {sizeMB ? ` · ${sizeMB >= 1000 ? `${(sizeMB / 1000).toFixed(1)} GB` : `${sizeMB} MB`}` : ''}
+                          </a>
+                        )
                       )}
                     </div>
                   )
