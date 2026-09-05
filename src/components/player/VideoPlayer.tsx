@@ -140,7 +140,7 @@ function EmbedPlayer({
               className="absolute inset-0 w-full h-full border-0"
               allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
               allowFullScreen
-              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+              referrerPolicy="no-referrer"
               onLoad={() => setLoadingServer(false)}
               onError={handleIframeError}
             />
