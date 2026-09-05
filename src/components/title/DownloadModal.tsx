@@ -40,7 +40,7 @@ function triggerDeviceDownload(url: string) {
 export default function DownloadModal({ open, onClose, title, mode, seasonNumber, seasonEpisodes, episode }: Props) {
   const navigate = useNavigate()
   const [phase, setPhase] = useState<Phase>('resolving')
-  const [qualities, setQualities] = useState<Record<string, number>>({})
+  const [qualities, setQualities] = useState<Record<string, { sizeMB: number }>>({})
   const [selected, setSelected] = useState<string | null>(null)
   const [from, setFrom] = useState(1)
   const [to, setTo] = useState(1)
@@ -79,8 +79,13 @@ export default function DownloadModal({ open, onClose, title, mode, seasonNumber
         if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.message || 'Sources did not respond.')
         const data = await res.json()
         if (!live) return
-        setQualities(data.qualities ?? {})
-        const best = Object.keys(data.qualities ?? {}).sort((a: string, b: string) => qualityRank(b) - qualityRank(a))[0]
+        const q: Record<string, { sizeMB: number }> = {}
+        for (const [k, v] of Object.entries<any>(data.qualities ?? {})) {
+          if (v && typeof v === 'object') q[k] = { sizeMB: Number(v.sizeMB) || 0 }
+          else q[k] = { sizeMB: Number(v) || 0 }
+        }
+        setQualities(q)
+        const best = Object.keys(q).sort((a: string, b: string) => qualityRank(b) - qualityRank(a))[0]
         setSelected(best ?? null)
         setPhase('ready')
       } catch (err: unknown) {
@@ -146,8 +151,7 @@ export default function DownloadModal({ open, onClose, title, mode, seasonNumber
     const episodeId = ep ? ep.id : `${title.id}-m`
     triggerDeviceDownload(fileUrl(episodeId, name, selected))
 
-    const qualitiesMap: Record<string, { sizeMB: number }> = {}
-    for (const [q, sizeMB] of Object.entries(qualities)) qualitiesMap[q] = { sizeMB }
+    const qualitiesMap: Record<string, { sizeMB: number }> = { ...qualities }
     saveLocalJob({
       id: `local_${Date.now()}`,
       title: name,
@@ -308,7 +312,7 @@ export default function DownloadModal({ open, onClose, title, mode, seasonNumber
                     <p className="text-xs text-muted">
                       {rangeEps.length > 1 ? `${rangeEps.length} episodes · ` : ''}Pick a quality
                     </p>
-                    {sortedQualities.map(([q, sizeMB]) => (
+                    {sortedQualities.map(([q, info]) => (
                       <button
                         key={q}
                         onClick={() => setSelected(q)}
@@ -323,8 +327,8 @@ export default function DownloadModal({ open, onClose, title, mode, seasonNumber
                           {q}p
                         </span>
                         <span className="text-xs font-medium">
-                          {sizeMB >= 1000 ? `${(sizeMB / 1000).toFixed(1)} GB` : `${sizeMB} MB`}
-                          {rangeEps.length > 1 ? ' / ep' : ''}
+                          {info.sizeMB >= 1000 ? `${(info.sizeMB / 1000).toFixed(1)} GB` : `${info.sizeMB} MB`}
+                          {mode === 'batch' && rangeEps.length > 1 ? ' / ep' : ''}
                         </span>
                       </button>
                     ))}
@@ -332,7 +336,7 @@ export default function DownloadModal({ open, onClose, title, mode, seasonNumber
 
                   <button
                     onClick={startDownload}
-                    disabled={!selected || rangeEps.length === 0}
+                    disabled={!selected || (mode === 'batch' && rangeEps.length === 0)}
                     className="btn-shimmer w-full flex items-center justify-center gap-2 bg-gradient-to-r from-brand2 to-brand px-5 py-3.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-brand2/30 disabled:opacity-50"
                   >
                     <IconDownload width={15} height={15} />
