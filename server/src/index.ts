@@ -245,6 +245,28 @@ async function processBatchJob(jobId: string) {
 // ── DIRECT FILE DOWNLOAD (streams the real MP4 to the user's device) ────────
 
 /**
+ * GET /api/downloads/resolve?episodeId=tmdb-123-m
+ * Quick quality lookup for the download popup — returns available MP4
+ * renditions with sizes so the user can pick before anything starts.
+ */
+app.get('/api/downloads/resolve', async (req, res) => {
+  const { episodeId } = req.query as { episodeId?: string }
+  if (!episodeId) {
+    res.status(400).json({ error: 'INVALID_REQUEST', message: 'episodeId is required.' })
+    return
+  }
+  try {
+    const qualities = await resolveVidlinkQualities(String(episodeId))
+    res.json({ qualities })
+  } catch (err: unknown) {
+    res.status(502).json({
+      error: 'RESOLVE_FAILED',
+      message: err instanceof Error ? err.message : 'Could not reach the stream provider.',
+    })
+  }
+})
+
+/**
  * GET /api/downloads/file?episodeId=tmdb-123-m&title=Inception&quality=1080
  * Resolves a fresh signed MP4 URL and proxy-streams it as an attachment.
  * The CDN requires server-side fetching, and a fresh resolution beats

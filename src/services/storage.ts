@@ -111,6 +111,7 @@ export interface LocalDownloadItem {
   title: string
   status: 'pending' | 'resolving' | 'completed' | 'failed'
   qualities?: Record<string, LocalDownloadQuality>
+  quality?: string
   error?: string
 }
 

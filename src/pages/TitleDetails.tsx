@@ -4,16 +4,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { getTitleWithEpisodes, getRecommendations, parseEpisodeId } from '../services/api'
 import { useApp } from '../context/AppContext'
-import { getProgress, saveLocalJob } from '../services/storage'
+import { getProgress } from '../services/storage'
 import { formatDuration, formatRuntime, classNames } from '../utils/helpers'
 import TitleRow from '../components/title/TitleRow'
+import DownloadModal from '../components/title/DownloadModal'
 import {
   IconPlay, IconPlus, IconCheck, IconStar, IconClock,
   IconChevronDown, IconBack, IconFilm, IconTv, IconDownload,
 } from '../components/common/Icons'
-import type { TitleDetails as Details, TitleSummary } from '../types'
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://vesper-api-za8p.onrender.com'
+import type { TitleDetails as Details, TitleSummary, Episode } from '../types'
 
 export default function TitleDetails() {
   const { id } = useParams<{ id: string }>()
@@ -23,8 +22,7 @@ export default function TitleDetails() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [openSeason, setOpenSeason] = useState<number | null>(1)
-  const [downloading, setDownloading] = useState(false)
-  const [downloadingEpId, setDownloadingEpId] = useState<string | null>(null)
+  const [dlModal, setDlModal] = useState<{ mode: 'movie' | 'episode' | 'batch'; episode?: Episode } | null>(null)
   const { isInWatchlist, toggleWatchlist } = useApp()
 
   useEffect(() => {
@@ -54,127 +52,6 @@ export default function TitleDetails() {
     for (const list of map.values()) list.sort((a, b) => a.number - b.number)
     return map
   }, [title])
-
-  const handleBatchDownload = async () => {
-    if (!title) return
-    setDownloading(true)
-    const isMovie = title.type === 'Movie'
-
-    let downloadItems = []
-    let jobTitle = title.title
-
-    if (isMovie) {
-      downloadItems = [
-        {
-          episodeId: `${title.id}-m`,
-          title: title.title,
-          type: 'movie',
-        },
-      ]
-    } else {
-      const currentSeasonEps = seasons.get(openSeason ?? 1) || []
-      if (currentSeasonEps.length === 0) {
-        toast.error('No episodes found for the active season.')
-        setDownloading(false)
-        return
-      }
-      jobTitle = `${title.title} - Season ${openSeason}`
-      downloadItems = currentSeasonEps.map((ep) => ({
-        episodeId: ep.id,
-        title: `S${ep.season}E${ep.number} - ${ep.title || 'Untitled'}`,
-        season: ep.season,
-        episode: ep.number,
-        type: 'tv',
-      }))
-    }
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/downloads/batch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: jobTitle,
-          items: downloadItems,
-        }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        saveLocalJob({
-          id: data.jobId,
-          title: jobTitle,
-          createdAt: Date.now(),
-          status: 'processing',
-          progress: 0,
-          items: downloadItems.map((it, idx) => ({
-            id: `${data.jobId}_${idx}`,
-            episodeId: it.episodeId,
-            title: it.title,
-            status: 'resolving' as const,
-          })),
-        })
-        toast.success(`Enqueued ${downloadItems.length} items for batch download!`, { id: 'batch-success' })
-        navigate('/downloads')
-      } else {
-        toast.error('Failed to create download job.')
-      }
-    } catch {
-      toast.error('Download server is offline or restarting. Please try again in a few seconds.')
-    } finally {
-      setDownloading(false)
-    }
-  }
-
-  const handleDownloadEpisode = async (ep: Details['episodes'][0]) => {
-    if (!title || downloadingEpId) return
-    setDownloadingEpId(ep.id)
-    const jobTitle = `${title.title} - S${ep.season}E${ep.number}`
-    const downloadItems = [
-      {
-        episodeId: ep.id,
-        title: `S${ep.season}E${ep.number} - ${ep.title || 'Untitled'}`,
-        season: ep.season,
-        episode: ep.number,
-        type: 'tv' as const,
-      },
-    ]
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/downloads/batch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: jobTitle,
-          items: downloadItems,
-        }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        saveLocalJob({
-          id: data.jobId,
-          title: jobTitle,
-          createdAt: Date.now(),
-          status: 'processing',
-          progress: 0,
-          items: downloadItems.map((it, idx) => ({
-            id: `${data.jobId}_${idx}`,
-            episodeId: it.episodeId,
-            title: it.title,
-            status: 'resolving' as const,
-          })),
-        })
-        toast.success(`Enqueued Episode ${ep.number}!`, { id: `ep-${ep.id}-success` })
-        navigate('/downloads')
-      } else {
-        toast.error('Failed to create download job.')
-      }
-    } catch {
-      toast.error('Download server is offline or restarting. Please try again.')
-    } finally {
-      setDownloadingEpId(null)
-    }
-  }
 
   if (loading) {
     return (
@@ -304,12 +181,11 @@ export default function TitleDetails() {
             )}
 
             <button
-              onClick={handleBatchDownload}
-              disabled={downloading}
-              className="flex items-center gap-2 bg-white/5 border border-line px-5 py-3 rounded-xl font-semibold hover:bg-white/10 text-white transition-all disabled:opacity-50"
+              onClick={() => setDlModal({ mode: isMovie ? 'movie' : 'batch' })}
+              className="flex items-center gap-2 bg-white/5 border border-line px-5 py-3 rounded-xl font-semibold hover:bg-white/10 text-white transition-all"
             >
               <IconDownload width={18} height={18} className="text-brand" />
-              {downloading ? 'Enqueuing…' : isMovie ? 'Download Movie' : `Batch Download Season ${openSeason ?? 1}`}
+              {isMovie ? 'Download Movie' : `Download Season ${openSeason ?? 1}`}
             </button>
 
             <button
@@ -384,9 +260,8 @@ export default function TitleDetails() {
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <button
-                                  onClick={() => handleDownloadEpisode(ep)}
-                                  disabled={downloadingEpId === ep.id}
-                                  className="glass rounded-lg p-2 text-brand hover:bg-white/15 disabled:opacity-50"
+                                  onClick={() => setDlModal({ mode: 'episode', episode: ep })}
+                                  className="glass rounded-lg p-2 text-brand hover:bg-white/15"
                                   title="Download Episode"
                                 >
                                   <IconDownload width={14} height={14} />
@@ -415,6 +290,18 @@ export default function TitleDetails() {
         <div className="max-w-6xl mx-auto">
           <TitleRow title="More Like This" items={related} />
         </div>
+      )}
+
+      {title && (
+        <DownloadModal
+          open={dlModal !== null}
+          onClose={() => setDlModal(null)}
+          title={title}
+          mode={dlModal?.mode ?? 'movie'}
+          seasonNumber={openSeason ?? 1}
+          seasonEpisodes={dlModal?.mode === 'batch' ? seasons.get(openSeason ?? 1) ?? [] : []}
+          episode={dlModal?.episode ?? null}
+        />
       )}
     </div>
   )

@@ -16,15 +16,14 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://vesper-api-za8p
 const qualityRank = (q: string) => Number(q) || 0
 
 function bestQuality(item: LocalDownloadItem): string | null {
-  if (!item.qualities) return null
+  if (!item.qualities) return item.quality ?? null
   const keys = Object.keys(item.qualities)
-  if (keys.length === 0) return null
+  if (keys.length === 0) return item.quality ?? null
   return keys.sort((a, b) => qualityRank(b) - qualityRank(a))[0]
 }
 
-function fileUrl(item: LocalDownloadItem, quality?: string): string {
-  const params = new URLSearchParams({ episodeId: item.episodeId, title: item.title })
-  if (quality) params.set('quality', quality)
+function fileUrl(item: LocalDownloadItem, quality: string): string {
+  const params = new URLSearchParams({ episodeId: item.episodeId, title: item.title, quality })
   return `${BACKEND_URL}/api/downloads/file?${params.toString()}`
 }
 
@@ -52,7 +51,6 @@ export default function Downloads() {
   const { setLocalVideoFile } = useApp()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [jobs, setJobs] = useState<LocalDownloadJob[]>(getLocalJobs)
-  const [refreshedAt, setRefreshedAt] = useState<number>(Date.now())
 
   const syncJobs = useCallback(async () => {
     const local = getLocalJobs()
@@ -95,15 +93,13 @@ export default function Downloads() {
   const handleRefresh = async () => {
     await syncJobs()
     setJobs(getLocalJobs())
-    setRefreshedAt(Date.now())
   }
 
   const handleRemoveJob = (jobId: string) => {
     removeLocalJob(jobId)
-    // Best-effort cleanup of the server copy too
     fetch(`${BACKEND_URL}/api/downloads/jobs/${jobId}`, { method: 'DELETE' }).catch(() => {})
     setJobs(getLocalJobs())
-    toast.success('Download removed.')
+    toast.success('Removed.')
   }
 
   const handlePlayOfflineClick = () => {
@@ -139,197 +135,139 @@ export default function Downloads() {
         </button>
       </div>
 
-      <div className="mt-8 space-y-6">
-        <div className="glass rounded-2xl p-5 border border-line/60">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-bold flex items-center gap-2">
-                <IconDownload width={16} height={16} className="text-brand" />
-                Your Download Queue
-              </p>
-              <p className="text-xs text-muted mt-1 leading-relaxed">
-                Downloads are stored on this device only — nobody else sees your queue. Pick a quality on any
-                resolved item and the real MP4 file downloads straight to your storage.
-              </p>
-            </div>
-          </div>
+      {/* Play Offline Video File Card */}
+      <div className="mt-8 glass rounded-2xl p-5 border border-line/60 bg-gradient-to-br from-surface/80 to-surface/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h3 className="text-sm font-bold flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Play from device
+          </h3>
+          <p className="text-xs text-muted leading-relaxed max-w-xl">
+            Got a video saved on this phone or computer? Open it here and it plays in the theater, no internet needed.
+          </p>
         </div>
+        <button
+          onClick={handlePlayOfflineClick}
+          className="btn-shimmer flex items-center justify-center gap-2 bg-gradient-to-r from-brand2 to-brand px-5 py-3 rounded-xl text-xs font-bold text-white shadow-md cursor-pointer shrink-0"
+        >
+          Play Local File
+        </button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="video/*"
+          className="hidden"
+        />
+      </div>
 
-        {/* Play Offline Video File Card */}
-        <div className="glass rounded-2xl p-5 border border-line/60 bg-gradient-to-br from-surface/80 to-surface/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Offline Theater Playback
-            </h3>
-            <p className="text-xs text-muted leading-relaxed max-w-xl">
-              Play any movie or episode video file directly from your local phone, tablet, or PC storage. Everything is rendered beautifully inside Vesper's immersive HTML5 custom cinema theater.
-            </p>
-          </div>
-          <button
-            onClick={handlePlayOfflineClick}
-            className="btn-shimmer flex items-center justify-center gap-2 bg-gradient-to-r from-brand2 to-brand px-5 py-3 rounded-xl text-xs font-bold text-white shadow-md cursor-pointer shrink-0"
-          >
-            Play Local File
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="video/*"
-            className="hidden"
-          />
+      {jobs.length === 0 ? (
+        <div className="mt-6 text-center py-16 glass rounded-2xl border border-line/40 space-y-3">
+          <IconDownload width={40} height={40} className="mx-auto text-muted/50" />
+          <h3 className="text-base font-bold">Nothing here yet</h3>
+          <p className="text-xs text-muted max-w-md mx-auto">
+            Hit Download on any movie or episode and it'll show up here.
+          </p>
         </div>
-
-        {jobs.length === 0 ? (
-          <div className="text-center py-16 glass rounded-2xl border border-line/40 space-y-3">
-            <IconDownload width={40} height={40} className="mx-auto text-muted/50" />
-            <h3 className="text-base font-bold">No Downloads Yet</h3>
-            <p className="text-xs text-muted max-w-md mx-auto">
-              Go to any movie or TV series page and hit <b>Download</b> — movies offer direct MP4 saves, series
-              let you grab single episodes or whole seasons.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {jobs.map((job) => (
-              <div key={job.id} className="glass rounded-2xl p-5 border border-line/60 space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <h3 className="text-base font-bold truncate">{job.title}</h3>
-                    <p className="text-xs text-muted mt-0.5">
-                      Enqueued {new Date(job.createdAt).toLocaleTimeString()} · {job.items.length}{' '}
-                      {job.items.length === 1 ? 'item' : 'items'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        job.status === 'completed'
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                          : 'bg-brand/10 text-brand border border-brand/30 animate-pulse'
-                      }`}
-                    >
-                      {job.status === 'completed' ? 'Ready' : `${job.progress}% Resolved`}
-                    </span>
-                    <button
-                      onClick={() => handleRemoveJob(job.id)}
-                      className="text-muted hover:text-rose-400 transition-colors p-1.5 rounded-lg hover:bg-rose-500/10"
-                      aria-label="Remove download"
-                    >
-                      <IconTrash width={15} height={15} />
-                    </button>
-                  </div>
+      ) : (
+        <div className="mt-6 space-y-4">
+          {jobs.map((job) => (
+            <div key={job.id} className="glass rounded-2xl p-5 border border-line/60 space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold truncate">{job.title}</h3>
+                  <p className="text-xs text-muted mt-0.5">
+                    {new Date(job.createdAt).toLocaleTimeString()} · {job.items.length}{' '}
+                    {job.items.length === 1 ? 'item' : 'items'}
+                  </p>
                 </div>
-
-                {job.status === 'processing' && (
-                  <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-brand2 to-brand h-full transition-all duration-300"
-                      style={{ width: `${job.progress}%` }}
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-2 pt-2 border-t border-line/30">
-                  {job.items.map((item) => {
-                    const best = bestQuality(item)
-                    const altQualities = item.qualities
-                      ? Object.keys(item.qualities)
-                          .filter((q) => q !== best)
-                          .sort((a, b) => qualityRank(b) - qualityRank(a))
-                      : []
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-surface2/60 border border-line/40 text-xs"
-                      >
-                        <span className="font-semibold text-white/90 truncate max-w-[16rem]">{item.title}</span>
-                        {item.status === 'failed' ? (
-                          <span className="text-rose-400 flex items-center gap-1.5">
-                            <IconDownload width={12} height={12} /> {item.error || 'Unavailable'}
-                          </span>
-                        ) : best ? (
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {altQualities.map((q) => (
-                              <a
-                                key={q}
-                                href={fileUrl(item, q)}
-                                download
-                                onClick={() => toast.success(`Downloading ${q}p…`)}
-                                className="glass px-2.5 py-1.5 rounded-lg font-bold hover:bg-white/15 text-muted hover:text-white transition-colors"
-                              >
-                                {q}p · {item.qualities?.[q]?.sizeMB ?? '?'} MB
-                              </a>
-                            ))}
-                            <a
-                              href={fileUrl(item, best)}
-                              download
-                              onClick={() => toast.success(`Downloading ${best}p MP4…`)}
-                              className="btn-shimmer flex items-center gap-1.5 bg-gradient-to-r from-brand2 to-brand px-3 py-1.5 rounded-lg font-bold text-white shadow-md"
-                            >
-                              <IconDownload width={13} height={13} /> Save {best}p
-                              {item.qualities?.[best] ? ` · ${(item.qualities[best].sizeMB / 1000).toFixed(1)} GB` : ''}
-                            </a>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <a
-                              href={fileUrl(item)}
-                              download
-                              onClick={() => toast.success('Starting download…')}
-                              className="glass flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-brand hover:bg-white/15 transition-colors"
-                            >
-                              <IconDownload width={13} height={13} /> Save File
-                            </a>
-                            {job.status === 'processing' && (
-                              <span className="text-muted flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-brand animate-ping" /> Resolving…
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      job.status === 'completed'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-brand/10 text-brand border border-brand/30 animate-pulse'
+                    }`}
+                  >
+                    {job.status === 'completed' ? 'Ready' : `${job.progress}%`}
+                  </span>
+                  <button
+                    onClick={() => handleRemoveJob(job.id)}
+                    className="text-muted hover:text-rose-400 transition-colors p-1.5 rounded-lg hover:bg-rose-500/10"
+                    aria-label="Remove"
+                  >
+                    <IconTrash width={15} height={15} />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
 
-        {/* Step-by-step saving guide */}
-        <div className="glass rounded-2xl p-6 border border-line/40 space-y-4">
-          <h3 className="text-sm font-bold text-white/90">How downloads work</h3>
-          <div className="grid md:grid-cols-3 gap-4 text-xs text-muted/90">
-            <div className="space-y-1.5 p-3.5 rounded-xl bg-surface/50 border border-line/30">
-              <span className="font-mono font-bold text-brand block mb-1">STEP 1</span>
-              <p className="font-semibold text-white/95">Pick a quality</p>
-              <p className="leading-relaxed">
-                Vesper extracts the real MP4 file from the stream provider — no more saving empty HTML pages.
-                Hit a quality button and your browser downloads it directly.
-              </p>
+              {job.status === 'processing' && (
+                <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-brand2 to-brand h-full transition-all duration-300"
+                    style={{ width: `${job.progress}%` }}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2 pt-2 border-t border-line/30">
+                {job.items.map((item) => {
+                  const best = bestQuality(item)
+                  const chosen = item.quality && item.qualities?.[item.quality] ? item.quality : best
+                  const alts = item.qualities
+                    ? Object.keys(item.qualities)
+                        .filter((q) => q !== chosen)
+                        .sort((a, b) => qualityRank(b) - qualityRank(a))
+                    : []
+                  const sizeMB = chosen && item.qualities?.[chosen]?.sizeMB
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-surface2/60 border border-line/40 text-xs"
+                    >
+                      <span className="font-semibold text-white/90 truncate max-w-[16rem]">{item.title}</span>
+                      {item.status === 'failed' ? (
+                        <span className="text-rose-400 flex items-center gap-1.5">
+                          <IconDownload width={12} height={12} /> {item.error || 'Unavailable'}
+                        </span>
+                      ) : item.status === 'resolving' || item.status === 'pending' ? (
+                        <span className="text-muted flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand animate-ping" /> Finding sources…
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {alts.map((q) => (
+                            <a
+                              key={q}
+                              href={fileUrl(item, q)}
+                              download
+                              onClick={() => toast.success(`Downloading ${q}p…`)}
+                              className="glass px-2.5 py-1.5 rounded-lg font-bold hover:bg-white/15 text-muted hover:text-white transition-colors"
+                            >
+                              {q}p · {item.qualities?.[q]?.sizeMB ?? '?'} MB
+                            </a>
+                          ))}
+                          {chosen && (
+                            <a
+                              href={fileUrl(item, chosen)}
+                              download
+                              onClick={() => toast.success(`Downloading ${chosen}p…`)}
+                              className="btn-shimmer flex items-center gap-1.5 bg-gradient-to-r from-brand2 to-brand px-3 py-1.5 rounded-lg font-bold text-white shadow-md"
+                            >
+                              <IconDownload width={13} height={13} /> Save {chosen}p
+                              {sizeMB ? ` · ${sizeMB >= 1000 ? `${(sizeMB / 1000).toFixed(1)} GB` : `${sizeMB} MB`}` : ''}
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-            <div className="space-y-1.5 p-3.5 rounded-xl bg-surface/50 border border-line/30">
-              <span className="font-mono font-bold text-brand block mb-1">STEP 2</span>
-              <p className="font-semibold text-white/95">Find it in your files</p>
-              <p className="leading-relaxed">
-                The video lands in your device's Downloads folder as a normal <b>.mp4</b>. On mobile you can
-                also long-press a quality button and choose <b>"Download link"</b>.
-              </p>
-            </div>
-            <div className="space-y-1.5 p-3.5 rounded-xl bg-surface/50 border border-line/30">
-              <span className="font-mono font-bold text-brand block mb-1">STEP 3</span>
-              <p className="font-semibold text-white/95">Play offline in Vesper</p>
-              <p className="leading-relaxed">
-                Come back here anytime, tap <b>"Play Local File"</b>, and select your saved video to watch in
-                the theater — zero internet needed.
-              </p>
-            </div>
-          </div>
-          <p className="text-[11px] text-muted/50">Queue last synced {new Date(refreshedAt).toLocaleTimeString()}</p>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   )
 }

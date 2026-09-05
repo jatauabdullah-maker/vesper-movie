@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
 import VideoPlayer from '../components/player/VideoPlayer'
 import { getTitleWithEpisodes, getStream, parseEpisodeId } from '../services/api'
 import { useApp } from '../context/AppContext'
 import { useProgressTracker } from '../hooks/usePlayer'
-import { saveLocalJob } from '../services/storage'
+import DownloadModal from '../components/title/DownloadModal'
 import { formatDuration, classNames } from '../utils/helpers'
 import { IconBack, IconChevronLeft, IconChevronRight, IconDownload } from '../components/common/Icons'
 import type { TitleDetails, Episode, StreamResponse } from '../types'
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://vesper-api-za8p.onrender.com'
 
 export default function Watch() {
   const { id, episodeId } = useParams<{ id: string; episodeId: string }>()
@@ -20,7 +17,7 @@ export default function Watch() {
   const [stream, setStream] = useState<StreamResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [downloading, setDownloading] = useState(false)
+  const [dlOpen, setDlOpen] = useState(false)
   const { settings, localVideoFile } = useApp()
 
   const parsed = useMemo(() => (episodeId ? parseEpisodeId(episodeId) : null), [episodeId])
@@ -28,76 +25,6 @@ export default function Watch() {
 
   const episode = useMemo(() => episodes.find((e) => e.id === episodeId) ?? episodes[0] ?? null, [episodes, episodeId])
   const { track, getInitialPosition } = useProgressTracker(title, episode)
-
-  const handleDownload = async () => {
-    if (!title || downloading) return
-    if (id === 'local') {
-      toast.error('This is already a local offline file!')
-      return
-    }
-    setDownloading(true)
-    let jobTitle = title.title
-    const downloadItems = []
-
-    if (isMovie) {
-      downloadItems.push({
-        episodeId: episodeId || '',
-        title: title.title,
-        season: 1,
-        episode: 1,
-        type: 'movie' as const,
-      })
-    } else if (episode) {
-      jobTitle = `${title.title} - S${episode.season}E${episode.number}`
-      downloadItems.push({
-        episodeId: episode.id,
-        title: `S${episode.season}E${episode.number} - ${episode.title || 'Untitled'}`,
-        season: episode.season,
-        episode: episode.number,
-        type: 'tv' as const,
-      })
-    } else {
-      toast.error('No episode or movie active.')
-      setDownloading(false)
-      return
-    }
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/downloads/batch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: jobTitle,
-          items: downloadItems,
-        }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        saveLocalJob({
-          id: data.jobId,
-          title: jobTitle,
-          createdAt: Date.now(),
-          status: 'processing',
-          progress: 0,
-          items: downloadItems.map((it, idx) => ({
-            id: `${data.jobId}_${idx}`,
-            episodeId: it.episodeId,
-            title: it.title,
-            status: 'resolving' as const,
-          })),
-        })
-        toast.success(`Enqueued "${jobTitle}" for download!`)
-        navigate('/downloads')
-      } else {
-        toast.error('Failed to start download.')
-      }
-    } catch {
-      toast.error('Download server is offline or restarting. Please try again.')
-    } finally {
-      setDownloading(false)
-    }
-  }
 
   useEffect(() => {
     if (!id) return
@@ -254,12 +181,11 @@ export default function Watch() {
         <div className="flex items-center gap-2">
           {id !== 'local' && (
             <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="flex items-center gap-1.5 glass px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-white/15 disabled:opacity-50 transition-colors"
+              onClick={() => setDlOpen(true)}
+              className="flex items-center gap-1.5 glass px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors"
             >
-              <IconDownload width={16} height={16} className="text-brand shrink-0 animate-pulse" />
-              <span>{downloading ? 'Enqueuing…' : 'Download'}</span>
+              <IconDownload width={16} height={16} className="text-brand shrink-0" />
+              <span>Download</span>
             </button>
           )}
           {prev && (
@@ -308,6 +234,16 @@ export default function Watch() {
             ))}
           </div>
         </div>
+      )}
+
+      {title && id !== 'local' && (
+        <DownloadModal
+          open={dlOpen}
+          onClose={() => setDlOpen(false)}
+          title={title}
+          mode={isMovie ? 'movie' : 'episode'}
+          episode={isMovie ? null : episode}
+        />
       )}
     </div>
   )
