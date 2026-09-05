@@ -1,11 +1,18 @@
 import express from 'express'
 import cors from 'cors'
+import nacl from 'tweetnacl'
+import { Readable } from 'node:stream'
 
 const app = express()
 const PORT = process.env.PORT || 3001
 
 app.use(cors())
 app.use(express.json())
+
+interface DownloadQuality {
+  url: string
+  sizeMB: number
+}
 
 interface DownloadItem {
   id: string
@@ -15,7 +22,7 @@ interface DownloadItem {
   episode?: number
   type: 'movie' | 'tv'
   status: 'pending' | 'resolving' | 'completed' | 'failed'
-  downloadUrl?: string
+  qualities?: Record<string, DownloadQuality>
   error?: string
 }
 
@@ -30,40 +37,111 @@ interface BatchJob {
 
 const jobs = new Map<string, BatchJob>()
 
-// Embed providers reference for extraction / download URL generation
-const PROVIDERS = [
-  {
-    id: 'vidlink',
-    name: 'VidLink',
-    movieUrl: (id: string) => `https://vidlink.pro/movie/${id}`,
-    tvUrl: (id: string, s: number, e: number) => `https://vidlink.pro/tv/${id}/${s}/${e}`,
-  },
-  {
-    id: 'vidzee',
-    name: 'VidZee',
-    movieUrl: (id: string) => `https://player.vidzee.wtf/embed/movie/${id}`,
-    tvUrl: (id: string, s: number, e: number) => `https://player.vidzee.wtf/embed/tv/${id}/${s}/${e}`,
-  },
-  {
-    id: 'superembed',
-    name: 'SuperEmbed',
-    movieUrl: (id: string) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
-    tvUrl: (id: string, s: number, e: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`,
-  },
-  {
-    id: 'vidsrc',
-    name: 'VidSrc',
-    movieUrl: (id: string) => `https://vidsrc.xyz/embed/movie?tmdb=${id}`,
-    tvUrl: (id: string, s: number, e: number) => `https://vidsrc.xyz/embed/tv?tmdb=${id}&season=${s}&episode=${e}`,
-  },
-]
+// ── VIDLINK STREAM EXTRACTION ───────────────────────────────────────────────
+// Vidlink encrypts the tmdb id with a NaCl SecretBox (XSalsa20-Poly1305)
+// using a fixed key + zero nonce, appending a future unix timestamp. The
+// encrypted token is what their /api/b endpoint expects.
+
+const VIDLINK_KEY = Buffer.from(
+  'c75136c5668bbfe65a7ecad431a745db68b5f381555b38d8f6c699449cf11fcd',
+  'hex'
+)
+const VIDLINK_NONCE = Buffer.alloc(24)
+
+const VIDLINK_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+  Origin: 'https://vidlink.pro',
+  Referer: 'https://vidlink.pro/',
+}
+
+function encryptVidlinkToken(mediaId: string): string {
+  const timestamp = Math.floor(Date.now() / 1000) + 480
+  const tsBuf = Buffer.alloc(8)
+  tsBuf.writeBigUInt64BE(BigInt(timestamp))
+  const message = Buffer.concat([Buffer.from(mediaId, 'utf8'), tsBuf])
+  const box = nacl.secretbox(new Uint8Array(message), VIDLINK_NONCE, VIDLINK_KEY)
+  return Buffer.concat([VIDLINK_NONCE, Buffer.from(box)]).toString('base64url')
+}
+
+function parseEpisodeId(
+  episodeId: string
+): { tmdbId: string; kind: 'movie' | 'tv'; season: number; episode: number } | null {
+  let m = episodeId.match(/^tmdb-(\d+)-m$/)
+  if (m) return { tmdbId: m[1], kind: 'movie', season: 0, episode: 0 }
+  m = episodeId.match(/^tmdb-(\d+)-s(\d+)e(\d+)$/)
+  if (m) return { tmdbId: m[1], kind: 'tv', season: Number(m[2]), episode: Number(m[3]) }
+  return null
+}
+
+/**
+ * Resolve the real MP4 file URLs for a title from vidlink.
+ * Returns a map of quality → { url, sizeMB }. Signed URLs last ~1h.
+ */
+async function resolveVidlinkQualities(episodeId: string): Promise<Record<string, DownloadQuality>> {
+  const parsed = parseEpisodeId(episodeId)
+  if (!parsed) throw new Error('Invalid title reference.')
+
+  const token = encryptVidlinkToken(parsed.tmdbId)
+  const apiUrl =
+    parsed.kind === 'movie'
+      ? `https://vidlink.pro/api/b/movie/${token}?multiLang=0`
+      : `https://vidlink.pro/api/b/tv/${token}/${parsed.season}/${parsed.episode}?multiLang=0`
+
+  let data: any = null
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await fetch(apiUrl, { headers: VIDLINK_HEADERS, signal: AbortSignal.timeout(10000) })
+    if (res.status === 429) {
+      await new Promise((r) => setTimeout(r, 1500))
+      continue
+    }
+    if (!res.ok) throw new Error(`Stream provider returned ${res.status}.`)
+    data = await res.json()
+    break
+  }
+
+  const qualities = data?.stream?.qualities
+  if (!qualities || typeof qualities !== 'object') {
+    throw new Error('No downloadable file was returned for this title.')
+  }
+
+  const out: Record<string, DownloadQuality> = {}
+  for (const [q, info] of Object.entries<any>(qualities)) {
+    if (!info?.url || info.type !== 'mp4') continue
+    out[q] = { url: info.url, sizeMB: Math.round((Number(info.size) || 0) / 1_000_000) }
+  }
+  if (Object.keys(out).length === 0) throw new Error('No MP4 renditions available.')
+  return out
+}
+
+/**
+ * Pick the closest available quality to the requested one.
+ * Exact match wins; otherwise the highest option at or below the request;
+ * otherwise the lowest available.
+ */
+function pickQuality(qualities: Record<string, DownloadQuality>, requested: string): string {
+  if (qualities[requested]) return requested
+  const nums = Object.keys(qualities)
+    .map(Number)
+    .filter((n) => !Number.isNaN(n))
+    .sort((a, b) => a - b)
+  if (nums.length === 0) return Object.keys(qualities)[0]
+  const want = Number(requested) || nums[nums.length - 1]
+  const atOrBelow = nums.filter((n) => n <= want)
+  return String(atOrBelow.length > 0 ? atOrBelow[atOrBelow.length - 1] : nums[0])
+}
+
+function sanitizeFilename(name: string): string {
+  const clean = name.replace(/[^\w\s.-]+/g, '').replace(/\s+/g, ' ').trim() || 'video'
+  return `${clean.slice(0, 120)}.mp4`
+}
 
 // ── HEALTH CHECK ─────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
     service: 'vesper-backend',
-    version: '1.0.0',
+    version: '2.0.0',
     time: new Date().toISOString(),
   })
 })
@@ -71,7 +149,8 @@ app.get('/api/health', (_req, res) => {
 // ── BATCH DOWNLOAD ENDPOINTS ───────────────────────────────────────────────
 
 /**
- * Enqueue a batch download job
+ * Enqueue a batch download job. Jobs are displayed per-user from localStorage
+ * on the client — the server copy only tracks resolution state/sizes.
  */
 app.post('/api/downloads/batch', (req, res) => {
   const { title, items } = req.body as {
@@ -106,8 +185,6 @@ app.post('/api/downloads/batch', (req, res) => {
   }
 
   jobs.set(jobId, job)
-
-  // Start processing in background with controlled concurrency to handle server load well
   processBatchJob(jobId)
 
   res.status(201).json({
@@ -115,14 +192,6 @@ app.post('/api/downloads/batch', (req, res) => {
     jobId,
     itemCount: jobItems.length,
   })
-})
-
-/**
- * Get status of all batch jobs
- */
-app.get('/api/downloads/jobs', (_req, res) => {
-  const jobList = Array.from(jobs.values()).sort((a, b) => b.createdAt - a.createdAt)
-  res.json({ jobs: jobList })
 })
 
 /**
@@ -138,36 +207,28 @@ app.get('/api/downloads/jobs/:jobId', (req, res) => {
 })
 
 /**
- * Helper function to process a batch download job with pacing to handle load
+ * Remove a batch job from the server (user cleared it from their device)
+ */
+app.delete('/api/downloads/jobs/:jobId', (req, res) => {
+  const deleted = jobs.delete(req.params.jobId)
+  res.json({ ok: true, deleted })
+})
+
+/**
+ * Resolve real MP4 qualities for each item, paced to keep load low.
  */
 async function processBatchJob(jobId: string) {
   const job = jobs.get(jobId)
   if (!job) return
 
   job.status = 'processing'
-
   let completedCount = 0
 
   for (const item of job.items) {
     item.status = 'resolving'
-
     try {
-      // Parse episodeId to extract tmdbId
-      const parsed = parseEpisodeId(item.episodeId)
-      if (parsed) {
-        // Build download URLs across available providers
-        const primaryProvider = PROVIDERS[0]
-        const downloadUrl =
-          parsed.kind === 'movie'
-            ? primaryProvider.movieUrl(parsed.tmdbId)
-            : primaryProvider.tvUrl(parsed.tmdbId, parsed.season, parsed.episode)
-
-        item.downloadUrl = downloadUrl
-        item.status = 'completed'
-      } else {
-        item.status = 'failed'
-        item.error = 'Invalid episode ID format.'
-      }
+      item.qualities = await resolveVidlinkQualities(item.episodeId)
+      item.status = 'completed'
     } catch (err: unknown) {
       item.status = 'failed'
       item.error = err instanceof Error ? err.message : 'Failed to resolve download stream.'
@@ -175,24 +236,75 @@ async function processBatchJob(jobId: string) {
 
     completedCount++
     job.progress = Math.round((completedCount / job.items.length) * 100)
-
-    // Pacing delay between items to keep server load low
     await new Promise((resolve) => setTimeout(resolve, 300))
   }
 
   job.status = 'completed'
 }
 
-function parseEpisodeId(episodeId: string):
-  | { tmdbId: string; kind: 'movie' | 'tv'; season: number; episode: number }
-  | null {
-  let m = episodeId.match(/^tmdb-(\d+)-m$/)
-  if (m) return { tmdbId: m[1], kind: 'movie', season: 0, episode: 0 }
-  m = episodeId.match(/^tmdb-(\d+)-s(\d+)e(\d+)$/)
-  if (m) return { tmdbId: m[1], kind: 'tv', season: Number(m[2]), episode: Number(m[3]) }
-  return null
-}
+// ── DIRECT FILE DOWNLOAD (streams the real MP4 to the user's device) ────────
+
+/**
+ * GET /api/downloads/file?episodeId=tmdb-123-m&title=Inception&quality=1080
+ * Resolves a fresh signed MP4 URL and proxy-streams it as an attachment.
+ * The CDN requires server-side fetching, and a fresh resolution beats
+ * relying on 1h-old signed URLs stored at enqueue time.
+ */
+app.get('/api/downloads/file', async (req, res) => {
+  const { episodeId, title, quality } = req.query as {
+    episodeId?: string
+    title?: string
+    quality?: string
+  }
+
+  if (!episodeId) {
+    res.status(400).json({ error: 'INVALID_REQUEST', message: 'episodeId is required.' })
+    return
+  }
+
+  try {
+    const qualities = await resolveVidlinkQualities(episodeId)
+    const chosen = pickQuality(qualities, quality || '1080')
+    const sourceUrl = qualities[chosen].url
+
+    const upstream = await fetch(sourceUrl, {
+      headers: req.headers.range ? { Range: req.headers.range } : {},
+      signal: AbortSignal.timeout(30000),
+    })
+
+    if (!upstream.ok && upstream.status !== 206) {
+      res.status(502).json({ error: 'UPSTREAM_ERROR', message: `CDN returned ${upstream.status}.` })
+      return
+    }
+
+    const filename = sanitizeFilename(title || 'video')
+    res.status(upstream.status)
+    res.setHeader('Content-Type', 'video/mp4')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`)
+    res.setHeader('Accept-Ranges', 'bytes')
+    const contentRange = upstream.headers.get('content-range')
+    if (contentRange) res.setHeader('Content-Range', contentRange)
+    const contentLength = upstream.headers.get('content-length')
+    if (contentLength) res.setHeader('Content-Length', contentLength)
+
+    if (!upstream.body) {
+      res.end()
+      return
+    }
+    const stream = Readable.fromWeb(upstream.body as any)
+    stream.pipe(res)
+    stream.on('error', () => res.destroy())
+    req.on('close', () => stream.destroy())
+  } catch (err: unknown) {
+    if (!res.headersSent) {
+      res.status(502).json({
+        error: 'RESOLVE_FAILED',
+        message: err instanceof Error ? err.message : 'Could not resolve the video stream.',
+      })
+    }
+  }
+})
 
 app.listen(PORT, () => {
-  console.log(`[vesper-backend] High-speed download server running on port ${PORT}`)
+  console.log(`[vesper-backend] High-speed download server v2 running on port ${PORT}`)
 })

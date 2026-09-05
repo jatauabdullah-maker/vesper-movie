@@ -5,6 +5,7 @@ const K = {
   watchlist: 'vesper:watchlist',
   history: 'vesper:history',
   settings: 'vesper:settings',
+  dlJobs: 'vesper:dl-jobs',
 } as const
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -97,6 +98,51 @@ export function getSettings(): Settings {
 
 export function saveSettings(s: Settings) {
   write(K.settings, s)
+}
+
+// ---------- Download jobs (per-device, localStorage) ----------
+export interface LocalDownloadQuality {
+  sizeMB: number
+}
+
+export interface LocalDownloadItem {
+  id: string
+  episodeId: string
+  title: string
+  status: 'pending' | 'resolving' | 'completed' | 'failed'
+  qualities?: Record<string, LocalDownloadQuality>
+  error?: string
+}
+
+export interface LocalDownloadJob {
+  id: string
+  title: string
+  createdAt: number
+  status: 'processing' | 'completed'
+  progress: number
+  items: LocalDownloadItem[]
+}
+
+export function getLocalJobs(): LocalDownloadJob[] {
+  return read<LocalDownloadJob[]>(K.dlJobs, [])
+}
+
+export function saveLocalJob(job: LocalDownloadJob) {
+  const jobs = getLocalJobs().filter((j) => j.id !== job.id)
+  jobs.unshift(job)
+  write(K.dlJobs, jobs.slice(0, 50))
+}
+
+export function updateLocalJob(next: LocalDownloadJob) {
+  saveLocalJob(next)
+}
+
+export function removeLocalJob(jobId: string) {
+  write(K.dlJobs, getLocalJobs().filter((j) => j.id !== jobId))
+}
+
+export function clearLocalJobs() {
+  write(K.dlJobs, [])
 }
 
 // ---------- TMDB key (runtime override so users don't need a rebuild) ----------

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { getTitleWithEpisodes, getRecommendations, parseEpisodeId } from '../services/api'
 import { useApp } from '../context/AppContext'
-import { getProgress } from '../services/storage'
+import { getProgress, saveLocalJob } from '../services/storage'
 import { formatDuration, formatRuntime, classNames } from '../utils/helpers'
 import TitleRow from '../components/title/TitleRow'
 import {
@@ -99,6 +99,20 @@ export default function TitleDetails() {
       })
 
       if (res.ok) {
+        const data = await res.json()
+        saveLocalJob({
+          id: data.jobId,
+          title: jobTitle,
+          createdAt: Date.now(),
+          status: 'processing',
+          progress: 0,
+          items: downloadItems.map((it, idx) => ({
+            id: `${data.jobId}_${idx}`,
+            episodeId: it.episodeId,
+            title: it.title,
+            status: 'resolving' as const,
+          })),
+        })
         toast.success(`Enqueued ${downloadItems.length} items for batch download!`, { id: 'batch-success' })
         navigate('/downloads')
       } else {
@@ -136,6 +150,20 @@ export default function TitleDetails() {
       })
 
       if (res.ok) {
+        const data = await res.json()
+        saveLocalJob({
+          id: data.jobId,
+          title: jobTitle,
+          createdAt: Date.now(),
+          status: 'processing',
+          progress: 0,
+          items: downloadItems.map((it, idx) => ({
+            id: `${data.jobId}_${idx}`,
+            episodeId: it.episodeId,
+            title: it.title,
+            status: 'resolving' as const,
+          })),
+        })
         toast.success(`Enqueued Episode ${ep.number}!`, { id: `ep-${ep.id}-success` })
         navigate('/downloads')
       } else {

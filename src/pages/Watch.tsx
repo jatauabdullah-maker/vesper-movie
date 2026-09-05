@@ -5,6 +5,7 @@ import VideoPlayer from '../components/player/VideoPlayer'
 import { getTitleWithEpisodes, getStream, parseEpisodeId } from '../services/api'
 import { useApp } from '../context/AppContext'
 import { useProgressTracker } from '../hooks/usePlayer'
+import { saveLocalJob } from '../services/storage'
 import { formatDuration, classNames } from '../utils/helpers'
 import { IconBack, IconChevronLeft, IconChevronRight, IconDownload } from '../components/common/Icons'
 import type { TitleDetails, Episode, StreamResponse } from '../types'
@@ -72,6 +73,20 @@ export default function Watch() {
       })
 
       if (res.ok) {
+        const data = await res.json()
+        saveLocalJob({
+          id: data.jobId,
+          title: jobTitle,
+          createdAt: Date.now(),
+          status: 'processing',
+          progress: 0,
+          items: downloadItems.map((it, idx) => ({
+            id: `${data.jobId}_${idx}`,
+            episodeId: it.episodeId,
+            title: it.title,
+            status: 'resolving' as const,
+          })),
+        })
         toast.success(`Enqueued "${jobTitle}" for download!`)
         navigate('/downloads')
       } else {
